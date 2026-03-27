@@ -5,59 +5,72 @@ pipeline {
         choice(
             name: 'RUN_MODE',
             choices: ['FULL', 'INCREMENTAL'],
-            description: 'Choose whether to run full load or incremental load'
+            description: 'Choose which ETL mode to run'
         )
     }
 
     stages {
 
-        stage('Full Load (Optional)') {
-            when { expression { params.RUN_MODE == 'FULL' } }
+        stage('Run Pytests') {
+            steps {
+                echo "Running unit tests with pytest..."
+                sh """
+                    cd ${WORKSPACE}
+                    pytest --maxfail=1 --disable-warnings -q
+                """
+            }
+        }
+
+        stage('Full Load') {
+            when {
+                expression { params.RUN_MODE == 'FULL' }
+            }
             steps {
                 echo "Running FULL LOAD..."
-                sh "/usr/bin/spark-submit --master local[*] full_load/full_load.py"
+                sh """
+                    spark-submit full_load/full_load.py
+                """
             }
         }
 
-        stage('Cleaning After Full Load (Optional)') {
-            when { expression { params.RUN_MODE == 'FULL' } }
+        stage('Cleaning') {
             steps {
-                echo 'Cleaning Bronze → Silver after FULL LOAD...'
-                sh "/usr/bin/spark-submit --master local[*] cleaning/cleaning.py"
+                echo "Running CLEANING..."
+                sh """
+                    spark-submit cleaning/cleaning.py
+                """
             }
         }
 
-        stage('Incremental Load (Optional)') {
-            when { expression { params.RUN_MODE == 'INCREMENTAL' } }
+        stage('Incremental Load') {
+            when {
+                expression { params.RUN_MODE == 'INCREMENTAL' }
+            }
             steps {
                 echo "Running INCREMENTAL LOAD..."
-                sh "/usr/bin/spark-submit --master local[*] incremental/updated_incremental_load.py"
+                sh """
+                    spark-submit incremental/incremental_load.py
+                """
             }
         }
 
-        stage('Cleaning After Incremental Load (Optional)') {
-            when { expression { params.RUN_MODE == 'INCREMENTAL' } }
+        stage('Transformation (Hive)') {
             steps {
-                echo 'Cleaning Bronze → Silver after INCREMENTAL LOAD...'
-                sh "/usr/bin/spark-submit --master local[*] cleaning/cleaning.py"
-            }
-        }
-
-        stage('Transformation (Optional)') {
-            when { expression { params.RUN_MODE == 'INCREMENTAL' } }
-            steps {
-                echo "Running TRANSFORMATION (Silver → Gold)..."
-                sh "/usr/bin/spark-submit --master local[*] transformation/transformation.py"
+                echo "Running TRANSFORMATION (Hive Gold Layer)..."
+                sh """
+                    spark-submit transformation/transformation.py
+                """
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully"
+            echo "Pipeline completed successfully."
         }
         failure {
-            echo "Pipeline failed — check logs"
+            echo "Pipeline failed. Check logs and pytest results."
         }
     }
 }
+
