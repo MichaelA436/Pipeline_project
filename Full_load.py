@@ -1,4 +1,20 @@
+
+import logging
 from pyspark.sql import SparkSession
+
+# Logging Configuration
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("/tmp/michael/logs/full_load.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Spark Session
 
 spark = SparkSession.builder.appName("FullLoad").getOrCreate()
 
@@ -9,29 +25,32 @@ properties = {
     "driver": "org.postgresql.Driver"
 }
 
+# Load Users
 
 def users_file():
-    # DIRECT Bronze
+    logger.info("Starting USERS full load from PostgreSQL...")
     df = spark.read.jdbc(url=jdbc_url, table="michael.users", properties=properties)
     df.write.mode("overwrite").parquet("/tmp/michael/project/bronze/users")
-    
+    logger.info("Users written to Bronze layer.")
+
+# Load Movies
 
 def movies_file():
-    # RAW  (Bronze)
+    logger.info("Starting MOVIES full load from PostgreSQL...")
     df = spark.read.jdbc(url=jdbc_url, table="michael.movies", properties=properties)
 
-    # 1. Write to RAW zone (simulated HDFS)
     raw_path = "250226hdfs/michael/project/bronze/movies"
     df.write.mode("overwrite").parquet(raw_path)
+    logger.info("Movies written to RAW zone.")
 
-    # 2. Read RAW back in
     df_raw = spark.read.parquet(raw_path)
-
-    # 3. Write to Bronze
     df_raw.write.mode("overwrite").parquet("/tmp/michael/project/bronze/movies")
+    logger.info("Movies written RAW to Bronze.")
 
-    print("Movies loaded RAW ? Bronze.")
+# Execute
 
-
+logger.info("=== FULL LOAD STARTED ===")
 users_file()
 movies_file()
+logger.info("=== FULL LOAD COMPLETED ===")
+
