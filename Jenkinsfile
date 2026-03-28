@@ -14,7 +14,7 @@ pipeline {
         stage('Setup Python Environment') {
             steps {
                 sh '''
-                    ~/.pyenv/versions/jenkins-env/bin/python -m venv venv
+                    /home/ec2-user/.pyenv/versions/jenkins-env/bin/python -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip wheel
                     pip install -r requirements.txt
