@@ -2,94 +2,87 @@ pipeline {
     agent any
 
     environment {
-        PYTHON_BIN = '/usr/bin/python3'
-    }
-
-    parameters {
-        choice(
-            name: 'RUN_MODE',
-            choices: ['FULL', 'INCREMENTAL'],
-            description: 'Choose which ETL mode to run'
-        )
+        // Explicit Python 3.9 path
+        PYTHON_BIN = '/usr/bin/python3.9'
     }
 
     stages {
 
-        stage('Setup Python Environment') {
+        stage('Checkout SCM') {
             steps {
-                sh '''
-                    ${PYTHON_BIN} -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip wheel
-                    pip install -r requirements.txt
-                '''
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/MichaelA436/Pipeline_project.git']]
+                ])
             }
         }
 
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    // Show Python version
+                    sh """
+                        echo "Using Python binary: $PYTHON_BIN"
+                        $PYTHON_BIN --version
+                    """
+
+                    // Create virtual environment and install dependencies
+                    sh """
+                        $PYTHON_BIN -m venv venv
+                        . venv/bin/activate
+                        pip install --upgrade pip wheel
+                        pip install -r requirements.txt
+                        python -c "import pyspark; print('PySpark version:', pyspark.__version__)"
+                    """
+                }
+            }
+        }
 
         stage('Run Pytests') {
             steps {
-                sh '''
+                echo 'Running unit tests with pytest...'
+                sh """
                     . venv/bin/activate
                     pytest --maxfail=1 --disable-warnings -q
-                '''
+                """
             }
         }
 
-
         stage('Full Load') {
-            when {
-                expression { params.RUN_MODE == 'FULL' }
-            }
             steps {
-                echo "Running FULL LOAD..."
-                sh '''
-                    . venv/bin/activate
-                    spark-submit full_load/full_load.py
-                '''
+                echo 'Full Load stage skipped (placeholder)'
             }
         }
 
         stage('Cleaning') {
             steps {
-                echo "Running CLEANING..."
-                sh '''
-                    . venv/bin/activate
-                    spark-submit cleaning/cleaning.py
-                '''
+                echo 'Cleaning stage skipped (placeholder)'
             }
         }
 
         stage('Incremental Load') {
-            when {
-                expression { params.RUN_MODE == 'INCREMENTAL' }
-            }
             steps {
-                echo "Running INCREMENTAL LOAD..."
-                sh '''
-                    . venv/bin/activate
-                    spark-submit incremental/incremental_load.py
-                '''
+                echo 'Incremental Load stage skipped (placeholder)'
             }
         }
 
         stage('Transformation (Hive)') {
             steps {
-                echo "Running TRANSFORMATION (Hive Gold Layer)..."
-                sh '''
-                    . venv/bin/activate
-                    spark-submit transformation/transformation.py
-                '''
+                echo 'Transformation (Hive) stage skipped (placeholder)'
             }
         }
     }
 
     post {
-        success {
-            echo "Pipeline completed successfully."
+        always {
+            echo 'Pipeline finished. Check logs and pytest results.'
         }
         failure {
-            echo "Pipeline failed. Check logs and pytest results."
+            echo 'Pipeline failed!'
+        }
+        success {
+            echo 'Pipeline succeeded!'
         }
     }
 }
