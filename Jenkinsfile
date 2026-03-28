@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo "Setting up Python environment..."
                 sh '''
-                    python3.9 -m venv venv
+                    python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip wheel
                     pip install -r requirements.txt
