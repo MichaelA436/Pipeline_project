@@ -13,9 +13,8 @@ pipeline {
 
         stage('Setup Python Environment') {
             steps {
-                echo "Setting up Python environment..."
                 sh '''
-                    python3 -m venv venv
+                    ~/.pyenv/versions/jenkins-env/bin/python -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip wheel
                     pip install -r requirements.txt
@@ -23,15 +22,16 @@ pipeline {
             }
         }
 
+
         stage('Run Pytests') {
             steps {
-                echo "Running unit tests with pytest..."
                 sh '''
                     . venv/bin/activate
                     pytest --maxfail=1 --disable-warnings -q
                 '''
             }
         }
+
 
         stage('Full Load') {
             when {
