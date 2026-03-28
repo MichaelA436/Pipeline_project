@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        PYTHON_BIN = '/usr/bin/python3.9'
+    }
+
     parameters {
         choice(
             name: 'RUN_MODE',
