@@ -1,76 +1,95 @@
 pipeline {
-    agent any
+agent any
 
-    parameters {
-        choice(
-            name: 'RUN_MODE',
-            choices: ['FULL', 'INCREMENTAL'],
-            description: 'Choose which ETL mode to run'
-        )
-    }
+```
+parameters {
+    choice(
+        name: 'RUN_MODE',
+        choices: ['FULL', 'INCREMENTAL'],
+        description: 'Choose which ETL mode to run'
+    )
+}
 
-    stages {
+stages {
 
-        stage('Run Pytests') {
-            steps {
-                echo "Running unit tests with pytest..."
-                sh """
-                    cd ${WORKSPACE}
-                    pytest --maxfail=1 --disable-warnings -q
-                """
-            }
-        }
-
-        stage('Full Load') {
-            when {
-                expression { params.RUN_MODE == 'FULL' }
-            }
-            steps {
-                echo "Running FULL LOAD..."
-                sh """
-                    spark-submit full_load/full_load.py
-                """
-            }
-        }
-
-        stage('Cleaning') {
-            steps {
-                echo "Running CLEANING..."
-                sh """
-                    spark-submit cleaning/cleaning.py
-                """
-            }
-        }
-
-        stage('Incremental Load') {
-            when {
-                expression { params.RUN_MODE == 'INCREMENTAL' }
-            }
-            steps {
-                echo "Running INCREMENTAL LOAD..."
-                sh """
-                    spark-submit incremental/incremental_load.py
-                """
-            }
-        }
-
-        stage('Transformation (Hive)') {
-            steps {
-                echo "Running TRANSFORMATION (Hive Gold Layer)..."
-                sh """
-                    spark-submit transformation/transformation.py
-                """
-            }
+    stage('Setup Python Environment') {
+        steps {
+            echo "Setting up Python environment..."
+            sh '''
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+            '''
         }
     }
 
-    post {
-        success {
-            echo "Pipeline completed successfully."
-        }
-        failure {
-            echo "Pipeline failed. Check logs and pytest results."
+    stage('Run Pytests') {
+        steps {
+            echo "Running unit tests with pytest..."
+            sh '''
+                . venv/bin/activate
+                pytest --maxfail=1 --disable-warnings -q
+            '''
         }
     }
+
+    stage('Full Load') {
+        when {
+            expression { params.RUN_MODE == 'FULL' }
+        }
+        steps {
+            echo "Running FULL LOAD..."
+            sh '''
+                . venv/bin/activate
+                spark-submit full_load/full_load.py
+            '''
+        }
+    }
+
+    stage('Cleaning') {
+        steps {
+            echo "Running CLEANING..."
+            sh '''
+                . venv/bin/activate
+                spark-submit cleaning/cleaning.py
+            '''
+        }
+    }
+
+    stage('Incremental Load') {
+        when {
+            expression { params.RUN_MODE == 'INCREMENTAL' }
+        }
+        steps {
+            echo "Running INCREMENTAL LOAD..."
+            sh '''
+                . venv/bin/activate
+                spark-submit incremental/incremental_load.py
+            '''
+        }
+    }
+
+    stage('Transformation (Hive)') {
+        steps {
+            echo "Running TRANSFORMATION (Hive Gold Layer)..."
+            sh '''
+                . venv/bin/activate
+                spark-submit transformation/transformation.py
+            '''
+        }
+    }
+}
+
+post {
+    success {
+        echo "Pipeline completed successfully."
+    }
+    failure {
+        echo "Pipeline failed. Check logs and pytest results."
+    }
+}
+```
+
 }
 
