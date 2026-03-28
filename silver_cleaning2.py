@@ -1,6 +1,23 @@
+import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
+
+
+# Logging Configuration
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("/tmp/michael/logs/cleaning.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+# Spark Session
 
 spark = SparkSession.builder.appName("SilverLayer").getOrCreate()
 
@@ -8,10 +25,10 @@ BRONZE = "/tmp/michael/project/bronze"
 SILVER = "/tmp/michael/project/silver"
 
 
-
-#  CLEAN MOVIES  (STATIC DATA, FULL OVERWRITE)
+# Clean Movies
 
 def clean_movies():
+    logger.info("Cleaning MOVIES Bronze → Silver...")
     df = spark.read.parquet(f"{BRONZE}/movies")
     df = df.replace("", None)
 
@@ -28,32 +45,21 @@ def clean_movies():
           .withColumn("added_to_platform", to_date("added_to_platform"))
     )
 
-    string_cols = [
-        "title", "content_type", "genre_primary", "genre_secondary",
-        "language", "country_of_origin", "rating"
-    ]
-
+    string_cols = ["title", "content_type", "genre_primary", "genre_secondary", "language", "country_of_origin", "rating"]
     for c in string_cols:
         df = df.withColumn(c, trim(col(c)))
 
     df = df.dropDuplicates(["movie_id"])
+    df = df.withColumn("ingestion_date", current_date()).withColumn("source_system", lit("bronze"))
 
-    df = (
-        df.withColumn("ingestion_date", current_date())
-          .withColumn("source_system", lit("bronze"))
-    )
-
-    df = df.coalesce(1)
-    df.write.mode("overwrite").parquet(f"{SILVER}/movies")
-
-    print("Silver movies cleaned and overwritten.")
+    df.coalesce(1).write.mode("overwrite").parquet(f"{SILVER}/movies")
+    logger.info("Movies written to Silver.")
 
 
-
-
-#  CLEAN USERS  (SLOW-CHANGING, FULL OVERWRITE)
+# Clean Users
 
 def clean_users():
+    logger.info("Cleaning USERS Bronze → Silver...")
     df = spark.read.parquet(f"{BRONZE}/users")
     df = df.replace("", None)
 
@@ -71,121 +77,83 @@ def clean_users():
         df = df.withColumn(c, initcap(trim(col(c))))
 
     df = df.dropDuplicates(["user_id"])
+    df = df.withColumn("ingestion_date", current_date()).withColumn("source_system", lit("bronze"))
 
-    df = (
-        df.withColumn("ingestion_date", current_date())
-          .withColumn("source_system", lit("bronze"))
-    )
-
-    df = df.coalesce(1)
-    df.write.mode("overwrite").parquet(f"{SILVER}/users")
-
-    print("Silver users cleaned and overwritten.")
+    df.coalesce(1).write.mode("overwrite").parquet(f"{SILVER}/users")
+    logger.info("Users written to Silver.")
 
 
-
-
-#  CLEAN WATCH HISTORY  (FAST-CHANGING,  INCREMENTAL MERGE)
+# Clean Watch History
 
 def clean_watch_history():
+    logger.info("Cleaning WATCH_HISTORY Bronze → Silver...")
+
     bronze_batch_path = f"{BRONZE}/watch_history"
     bronze_stream_path = f"{BRONZE}/watch_history_stream"
     silver_path = f"{SILVER}/watch_history"
 
-    # Expected schema (correct order)
     expected_cols = [
-        "session_id",
-        "user_id",
-        "movie_id",
-        "watch_date",
-        "device_type",
-        "watch_duration_minutes",
-        "progress_percentage",
-        "action",
-        "quality",
-        "location_country",
-        "is_download",
-        "user_rating"
+        "session_id", "user_id", "movie_id", "watch_date", "device_type",
+        "watch_duration_minutes", "progress_percentage", "action", "quality",
+        "location_country", "is_download", "user_rating"
     ]
 
-    # Function to align schema for both batch + stream
     def align_schema(df):
         return (
-            df
-            .withColumn("watch_date", col("watch_date").cast("string"))
-            .withColumn("device_type", col("device_type").cast("string"))
-            .withColumn("watch_duration_minutes", col("watch_duration_minutes").cast("int"))
-            .withColumn("progress_percentage", col("progress_percentage").cast("float"))
-            .withColumn("action", col("action").cast("string"))
-            .withColumn("quality", col("quality").cast("string"))
-            .withColumn("location_country", col("location_country").cast("string"))
-            .withColumn("is_download", col("is_download").cast("boolean"))
-            .withColumn("user_rating", col("user_rating").cast("int"))
-            .select(expected_cols)
+            df.withColumn("watch_date", col("watch_date").cast("string"))
+              .withColumn("device_type", col("device_type").cast("string"))
+              .withColumn("watch_duration_minutes", col("watch_duration_minutes").cast("int"))
+              .withColumn("progress_percentage", col("progress_percentage").cast("float"))
+              .withColumn("action", col("action").cast("string"))
+              .withColumn("quality", col("quality").cast("string"))
+              .withColumn("location_country", col("location_country").cast("string"))
+              .withColumn("is_download", col("is_download").cast("boolean"))
+              .withColumn("user_rating", col("user_rating").cast("int"))
+              .select(expected_cols)
         )
 
-    # Load existing Silver
     try:
         silver_existing = spark.read.parquet(silver_path)
         silver_exists = True
+        logger.info("Existing Silver watch_history found.")
     except:
         silver_existing = None
         silver_exists = False
+        logger.info("No existing Silver watch_history found.")
 
-    # Load Bronze batch + stream
     bronze_dfs = []
 
     try:
         bronze_batch = spark.read.parquet(bronze_batch_path)
         bronze_dfs.append(align_schema(bronze_batch))
+        logger.info("Loaded Bronze batch watch_history.")
     except:
-        print("No Bronze batch watch_history found.")
+        logger.info("No Bronze batch watch_history found.")
 
     try:
         bronze_stream = spark.read.parquet(bronze_stream_path)
         bronze_dfs.append(align_schema(bronze_stream))
+        logger.info("Loaded Bronze stream watch_history.")
     except:
-        print("No Bronze stream watch_history found.")
+        logger.info("No Bronze stream watch_history found.")
 
     if not bronze_dfs:
-        print("No Bronze watch_history data found.")
-        
-    
-    print("Loaded batch:", "OK" if 'bronze_batch' in locals() else "NO")
-    print("Loaded stream:", "OK" if 'bronze_stream' in locals() else "NO")
-    print("Bronze dfs count:", len(bronze_dfs))
-    
-    if len(bronze_dfs) > 0:
-        print("Bronze total rows:", bronze_dfs[0].count())
-    else:
-        print('Bronze total rows: 0')
-
-    print("Silver exists:", silver_exists)
-    
-    if not bronze_dfs:
-        print('No Bronze watch_history data found.')
+        logger.info("No Bronze watch_history data found. Skipping.")
         return
-        
-    # Union all Bronze sources safely
+
     bronze_df = bronze_dfs[0]
     for extra in bronze_dfs[1:]:
         bronze_df = bronze_df.union(extra)
 
-    # Keep only NEW rows
     if silver_exists:
-        bronze_new = bronze_df.join(
-            silver_existing.select("session_id"),
-            on="session_id",
-            how="left_anti"
-        )
+        bronze_new = bronze_df.join(silver_existing.select("session_id"), on="session_id", how="left_anti")
     else:
         bronze_new = bronze_df
 
     if bronze_new.count() == 0:
-        print("No new watch_history rows to clean.")
+        logger.info("No new watch_history rows to clean.")
         return
 
-    # Clean new rows
     df = bronze_new.replace("", None)
 
     df = (
@@ -200,25 +168,20 @@ def clean_watch_history():
         df = df.withColumn(c, initcap(trim(col(c))))
 
     df = df.dropDuplicates(["session_id"])
+    df = df.withColumn("ingestion_date", current_date()).withColumn("source_system", lit("bronze"))
 
-    df = (
-        df.withColumn("ingestion_date", current_date())
-          .withColumn("source_system", lit("bronze"))
-    )
-
-    # Merge with existing Silver
     if silver_exists:
         df = silver_existing.union(df)
 
     df = df.dropDuplicates(["session_id"])
-    df = df.coalesce(1)
-    df.write.mode("overwrite").parquet(silver_path)
-
-    print("Silver watch_history updated from batch + stream.")
+    df.write.mode("overwrite").partitionBy("watch_date").parquet(silver_path)
+    logger.info("Silver watch_history updated.")
 
 
+# Execute
 
-
+logger.info("=== CLEANING STARTED ===")
 clean_movies()
 clean_users()
 clean_watch_history()
+logger.info("=== CLEANING COMPLETED ===")
