@@ -182,6 +182,7 @@ pipeline {
                     ssh -i ${SSH_KEY} ${CLOUDERA_HOST} "
                         export HADOOP_CONF_DIR=/etc/hadoop/conf
                         export YARN_CONF_DIR=/etc/hadoop/conf
+                        export HIVE_CONF_DIR=/etc/hive/conf
                         
                         spark-submit \
                           --master yarn \
