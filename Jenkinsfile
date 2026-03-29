@@ -2,7 +2,10 @@ pipeline {
     agent any
 
     environment {
-        PYTHON_BIN = '/usr/bin/python3'
+    PYTHON_BIN = '/usr/bin/python3'
+    SPARK_HOME = '/usr/local/spark'   // update to your real path
+    PATH = "${SPARK_HOME}/bin:${PATH}"
+    SPARK_SUBMIT_OPTS = "--add-opens java.base/java.nio=ALL-UNNAMED"
     }
 
     parameters {
