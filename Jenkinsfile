@@ -123,6 +123,7 @@ pipeline {
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
+                          --jars /tmp/postgresql-42.7.10.jar \
                           ${SPARK_SCRIPTS}/full_load.py
                     "
                 '''
@@ -144,6 +145,7 @@ pipeline {
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
+                          --jars /tmp/postgresql-42.7.10.jar \
                           ${SPARK_SCRIPTS}/updated_incremental_load.py
                     "
                 '''
