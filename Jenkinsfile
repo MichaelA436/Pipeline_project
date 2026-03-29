@@ -74,6 +74,19 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
+            Upload JDBC Driver
+        --------------------------------------------------------- */
+
+        stage('Upload JDBC Driver') {
+            steps {
+                sh '''
+                    scp -i ${SSH_KEY} -o StrictHostKeyChecking=no postgresql-42.7.3.jar ${CLOUDERA_HOST}:/tmp/
+                '''
+            }
+        }
+
+
+        /* ---------------------------------------------------------
            3. Copy ETL scripts to Cloudera
         --------------------------------------------------------- */
         stage('Copy ETL Scripts to Cluster') {
