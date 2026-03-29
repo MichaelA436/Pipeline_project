@@ -3,9 +3,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-
+# -------------------------
 # Logging Configuration
-
+# -------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -16,19 +16,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+# -------------------------
 # Spark Session
-
+# -------------------------
 spark = SparkSession.builder.appName("SilverLayer").getOrCreate()
 
 BRONZE = "/tmp/michael/project/bronze"
 SILVER = "/tmp/michael/project/silver"
 
-
-# Clean Movies
-
+# -------------------------
+# Clean Movies (FULL LOAD)
+# -------------------------
 def clean_movies():
-    logger.info("Cleaning MOVIES Bronze → Silver...")
+    logger.info("Cleaning MOVIES Bronze ? Silver...")
     df = spark.read.parquet(f"{BRONZE}/movies")
     df = df.replace("", None)
 
@@ -45,7 +45,8 @@ def clean_movies():
           .withColumn("added_to_platform", to_date("added_to_platform"))
     )
 
-    string_cols = ["title", "content_type", "genre_primary", "genre_secondary", "language", "country_of_origin", "rating"]
+    string_cols = ["title", "content_type", "genre_primary", "genre_secondary",
+                   "language", "country_of_origin", "rating"]
     for c in string_cols:
         df = df.withColumn(c, trim(col(c)))
 
@@ -55,11 +56,11 @@ def clean_movies():
     df.coalesce(1).write.mode("overwrite").parquet(f"{SILVER}/movies")
     logger.info("Movies written to Silver.")
 
-
-# Clean Users
-
+# -------------------------
+# Clean Users (FULL LOAD)
+# -------------------------
 def clean_users():
-    logger.info("Cleaning USERS Bronze → Silver...")
+    logger.info("Cleaning USERS Bronze ? Silver...")
     df = spark.read.parquet(f"{BRONZE}/users")
     df = df.replace("", None)
 
@@ -82,11 +83,11 @@ def clean_users():
     df.coalesce(1).write.mode("overwrite").parquet(f"{SILVER}/users")
     logger.info("Users written to Silver.")
 
-
-# Clean Watch History
-
+# -------------------------
+# Clean Watch History (INCREMENTAL)
+# -------------------------
 def clean_watch_history():
-    logger.info("Cleaning WATCH_HISTORY Bronze → Silver...")
+    logger.info("Cleaning WATCH_HISTORY Bronze ? Silver...")
 
     bronze_batch_path = f"{BRONZE}/watch_history"
     bronze_stream_path = f"{BRONZE}/watch_history_stream"
@@ -112,15 +113,19 @@ def clean_watch_history():
               .select(expected_cols)
         )
 
+    # --- Load existing Silver safely ---
     try:
         silver_existing = spark.read.parquet(silver_path)
+        # Force Spark to validate files immediately (prevents stale metadata errors)
+        _ = silver_existing.limit(1).count()
         silver_exists = True
         logger.info("Existing Silver watch_history found.")
-    except:
+    except Exception as e:
+        logger.warning(f"Silver watch_history missing or corrupted, treating as empty: {e}")
         silver_existing = None
         silver_exists = False
-        logger.info("No existing Silver watch_history found.")
 
+    # --- Load Bronze sources ---
     bronze_dfs = []
 
     try:
@@ -145,8 +150,13 @@ def clean_watch_history():
     for extra in bronze_dfs[1:]:
         bronze_df = bronze_df.union(extra)
 
+    # --- Incremental filter ---
     if silver_exists:
-        bronze_new = bronze_df.join(silver_existing.select("session_id"), on="session_id", how="left_anti")
+        bronze_new = bronze_df.join(
+            silver_existing.select("session_id"),
+            on="session_id",
+            how="left_anti"
+        )
     else:
         bronze_new = bronze_df
 
@@ -170,16 +180,13 @@ def clean_watch_history():
     df = df.dropDuplicates(["session_id"])
     df = df.withColumn("ingestion_date", current_date()).withColumn("source_system", lit("bronze"))
 
-    if silver_exists:
-        df = silver_existing.union(df)
-
-    df = df.dropDuplicates(["session_id"])
-    df.write.mode("overwrite").partitionBy("watch_date").parquet(silver_path)
+    # --- Incremental append ---
+    df.write.mode("append").partitionBy("watch_date").parquet(silver_path)
     logger.info("Silver watch_history updated.")
 
-
+# -------------------------
 # Execute
-
+# -------------------------
 logger.info("=== CLEANING STARTED ===")
 clean_movies()
 clean_users()
