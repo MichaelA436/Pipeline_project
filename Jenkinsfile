@@ -103,6 +103,9 @@ pipeline {
                 sh '''
                     echo "=== Running FULL LOAD on Cloudera ==="
                     ssh -i ${SSH_KEY} ${CLOUDERA_HOST} "
+                        export HADOOP_CONF_DIR=/etc/hadoop/conf
+                        export YARN_CONF_DIR=/etc/hadoop/conf
+
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
@@ -121,6 +124,9 @@ pipeline {
                 sh '''
                     echo "=== Running INCREMENTAL LOAD on Cloudera ==="
                     ssh -i ${SSH_KEY} ${CLOUDERA_HOST} "
+                        export HADOOP_CONF_DIR=/etc/hadoop/conf
+                        export YARN_CONF_DIR=/etc/hadoop/conf
+                        
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
@@ -138,6 +144,9 @@ pipeline {
                 sh '''
                     echo "=== Running CLEANING job on Cloudera ==="
                     ssh -i ${SSH_KEY} ${CLOUDERA_HOST} "
+                        export HADOOP_CONF_DIR=/etc/hadoop/conf
+                        export YARN_CONF_DIR=/etc/hadoop/conf
+                        
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
@@ -155,6 +164,9 @@ pipeline {
                 sh '''
                     echo "=== Running TRANSFORMATION job on Cloudera ==="
                     ssh -i ${SSH_KEY} ${CLOUDERA_HOST} "
+                        export HADOOP_CONF_DIR=/etc/hadoop/conf
+                        export YARN_CONF_DIR=/etc/hadoop/conf
+                        
                         spark-submit \
                           --master yarn \
                           --deploy-mode client \
