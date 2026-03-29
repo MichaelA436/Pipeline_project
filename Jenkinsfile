@@ -23,6 +23,16 @@ pipeline {
 
     stages {
 
+        stage('Debug Java') {
+            steps {
+                sh '''
+                which java
+                java -version
+                echo $JAVA_HOME
+                '''
+            }
+        }
+
         /* ---------------------------------------------------------
            1. Run tests locally (NO Spark here)
         --------------------------------------------------------- */
@@ -43,15 +53,7 @@ pipeline {
             }
         }
 
-        stage('Debug Java') {
-            steps {
-                sh '''
-                which java
-                java -version
-                echo $JAVA_HOME
-                '''
-            }
-        }
+        
 
         /* ---------------------------------------------------------
            2. Validate Cloudera cluster health
