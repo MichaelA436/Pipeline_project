@@ -5,83 +5,89 @@ pipeline {
         PYTHON_BIN = '/usr/bin/python3'
     }
 
-    stages {
+    parameters {
+        choice(
+            name: 'RUN_MODE',
+            choices: ['FULL', 'INCREMENTAL'],
+            description: 'Choose which ETL mode to run'
+        )
+    }
 
-        stage('Checkout SCM') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: 'https://github.com/MichaelA436/Pipeline_project.git']]
-                ])
-            }
-        }
+    stages {
 
         stage('Setup Python Environment') {
             steps {
-                script {
-                    // Show Python version
-                    sh """
-                        echo "Using Python binary: $PYTHON_BIN"
-                        $PYTHON_BIN --version
-                    """
+                sh '''
+                    echo "Using Python binary: ${PYTHON_BIN}"
+                    ${PYTHON_BIN} --version
 
-                    // Create virtual environment and install dependencies
-                    sh """
-                        $PYTHON_BIN -m venv venv
-                        . venv/bin/activate
-                        pip install --upgrade pip wheel
-                        pip install -r requirements.txt
-                        python -c "import pyspark; print('PySpark version:', pyspark.__version__)"
-                    """
-                }
+                    ${PYTHON_BIN} -m venv venv
+                    . venv/bin/activate
+
+                    pip install --upgrade pip wheel
+                    pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Pytests') {
             steps {
-                echo 'Running unit tests with pytest...'
-                sh """
+                sh '''
                     . venv/bin/activate
                     pytest --maxfail=1 --disable-warnings -q
-                """
+                '''
             }
         }
 
         stage('Full Load') {
+            when {
+                expression { params.RUN_MODE == 'FULL' }
+            }
             steps {
-                echo 'Full Load stage skipped (placeholder)'
+                sh '''
+                    . venv/bin/activate
+                    spark-submit full_load/full_load.py
+                '''
             }
         }
 
         stage('Cleaning') {
             steps {
-                echo 'Cleaning stage skipped (placeholder)'
+                sh '''
+                    . venv/bin/activate
+                    spark-submit cleaning/cleaning.py
+                '''
             }
         }
 
         stage('Incremental Load') {
+            when {
+                expression { params.RUN_MODE == 'INCREMENTAL' }
+            }
             steps {
-                echo 'Incremental Load stage skipped (placeholder)'
+                sh '''
+                    . venv/bin/activate
+                    spark-submit incremental/incremental_load.py
+                '''
             }
         }
 
         stage('Transformation (Hive)') {
             steps {
-                echo 'Transformation (Hive) stage skipped (placeholder)'
+                sh '''
+                    . venv/bin/activate
+                    spark-submit transformation/transformation.py
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline finished. Check logs and pytest results.'
+        success {
+            echo "Pipeline completed successfully."
         }
         failure {
-            echo 'Pipeline failed!'
-        }
-        success {
-            echo 'Pipeline succeeded!'
+            echo "Pipeline failed. Check logs and pytest results."
         }
     }
 }
