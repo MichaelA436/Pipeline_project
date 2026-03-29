@@ -74,13 +74,14 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-            Upload JDBC Driver
+           Download & Upload JDBC Driver
         --------------------------------------------------------- */
 
-        stage('Upload JDBC Driver') {
+        stage('Fetch & Upload JDBC Driver') {
             steps {
                 sh '''
-                    scp -i ${SSH_KEY} -o StrictHostKeyChecking=no postgresql-42.7.3.jar ${CLOUDERA_HOST}:/tmp/
+                    wget https://jdbc.postgresql.org/download/postgresql-42.7.10.jar -O postgresql-42.7.10.jar
+                    scp -i ${SSH_KEY} -o StrictHostKeyChecking=no postgresql-42.7.10.jar ${CLOUDERA_HOST}:/tmp/
                 '''
             }
         }
