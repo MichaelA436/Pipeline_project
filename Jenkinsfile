@@ -20,15 +20,6 @@ pipeline {
         PYTHON_BIN    = 'python3'
     }
 
-    stage('Debug Java') {
-        steps {
-            sh '''
-            which java
-            java -version
-            echo $JAVA_HOME
-            '''
-        }
-    }
 
     stages {
 
@@ -48,6 +39,16 @@ pipeline {
                     fi
 
                     ${PYTHON_BIN} -m pytest tests/ -k "not spark"
+                '''
+            }
+        }
+
+        stage('Debug Java') {
+            steps {
+                sh '''
+                which java
+                java -version
+                echo $JAVA_HOME
                 '''
             }
         }
