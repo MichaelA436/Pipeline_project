@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // Explicit Python 3.9 path
-        PYTHON_BIN = '/usr/bin/python3.9'
+        PYTHON_BIN = '/usr/bin/python3'
     }
 
     stages {
