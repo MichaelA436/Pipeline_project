@@ -18,8 +18,8 @@ pipeline {
         SSH_KEY       = '/var/lib/jenkins/.ssh/id_rsa'
         SPARK_SCRIPTS = '/tmp/michaelscripts/'
         PYTHON_BIN    = 'python3'
-        /* JAVA_HOME = '/usr/lib/jvm/java-1.8.0'
-        PATH = '${JAVA_HOME}/bin:${env.PATH}' */
+        JAVA_HOME = '/usr/lib/jvm/java-1.8.0'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
 
