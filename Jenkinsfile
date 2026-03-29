@@ -3,7 +3,7 @@ pipeline {
 
     environment {
     PYTHON_BIN = '/usr/bin/python3'
-    SPARK_HOME = '/usr/local/spark'   // update to your real path
+    SPARK_HOME = '~/.local/bin/spark-submit'   
     PATH = "${SPARK_HOME}/bin:${PATH}"
     SPARK_SUBMIT_OPTS = "--add-opens java.base/java.nio=ALL-UNNAMED"
     }
