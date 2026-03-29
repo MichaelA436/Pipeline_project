@@ -28,9 +28,9 @@ pipeline {
         stage('Debug Java') {
             steps {
                 sh '''
-                echo 'JAVA_HOME = $JAVA_HOME'
-                which java
-                java -version
+                    echo 'JAVA_HOME = $JAVA_HOME'
+                    which java
+                    java -version
                 '''
             }
         }
