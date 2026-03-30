@@ -15,8 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Spark Session (Hive Enabled)
-
+# Spark Session (Hive Enabled but NO saveAsTable)
 
 spark = (
     SparkSession.builder
@@ -25,6 +24,18 @@ spark = (
     .enableHiveSupport()
     .getOrCreate()
 )
+
+# Base path for all external Hive tables
+BASE = "/warehouse/tablespace/external/hive/michael.db"
+
+def overwrite_external(df, table_name):
+    """Write DataFrame directly to Hive external table location."""
+    path = f"{BASE}/{table_name}"
+    logger.info(f"Overwriting external table path: {path}")
+    df.write.mode("overwrite").parquet(path)
+
+
+# Load Silver Layer
 
 SILVER = "/tmp/michael/project/silver"
 
@@ -39,9 +50,10 @@ watch.createOrReplaceTempView("watch_history")
 
 logger.info("Running Gold layer transformations...")
 
+
 # 1. User Engagement
 
-logger.info("Writing user_engagement to Hive...")
+logger.info("Processing user_engagement...")
 user_engagement = spark.sql("""
     SELECT
         user_id,
@@ -52,15 +64,12 @@ user_engagement = spark.sql("""
     FROM watch_history
     GROUP BY user_id
 """)
-user_engagement.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.user_engagement")
+overwrite_external(user_engagement, "user_engagement")
 
 
 # 2. Top Movies
 
-logger.info("Writing top_movies to Hive...")
+logger.info("Processing top_movies...")
 top_movies = spark.sql("""
     SELECT
         m.movie_id,
@@ -72,15 +81,12 @@ top_movies = spark.sql("""
     GROUP BY m.movie_id, m.title
     ORDER BY total_watch_minutes DESC
 """)
-top_movies.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.top_movies")
+overwrite_external(top_movies, "top_movies")
 
 
 # 3. Genre Popularity
 
-logger.info("Writing genre_popularity to Hive...")
+logger.info("Processing genre_popularity...")
 genre_popularity = spark.sql("""
     SELECT
         m.genre_primary AS genre,
@@ -91,15 +97,12 @@ genre_popularity = spark.sql("""
     GROUP BY m.genre_primary
     ORDER BY total_watch_minutes DESC
 """)
-genre_popularity.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.genre_popularity")
+overwrite_external(genre_popularity, "genre_popularity")
 
 
 # 4. Daily Active Users
 
-logger.info("Writing daily_active_users to Hive...")
+logger.info("Processing daily_active_users...")
 daily_active_users = spark.sql("""
     SELECT
         watch_date,
@@ -109,16 +112,12 @@ daily_active_users = spark.sql("""
     GROUP BY watch_date
     ORDER BY watch_date
 """)
-daily_active_users.write \
-    .mode("overwrite") \
-    .partitionBy("watch_date") \
-    .format("hive") \
-    .saveAsTable("michael.daily_active_users")
+overwrite_external(daily_active_users, "daily_active_users")
 
 
 # 5. Peak Hours
 
-logger.info("Writing peak_hours to Hive...")
+logger.info("Processing peak_hours...")
 peak_hours = spark.sql("""
     SELECT
         watch_date,
@@ -128,16 +127,12 @@ peak_hours = spark.sql("""
     GROUP BY watch_date
     ORDER BY watch_date
 """)
-peak_hours.write \
-    .mode("overwrite") \
-    .partitionBy("watch_date") \
-    .format("hive") \
-    .saveAsTable("michael.peak_hours")
+overwrite_external(peak_hours, "peak_hours")
 
 
 # 6. Country Insights
 
-logger.info("Writing country_insights to Hive...")
+logger.info("Processing country_insights...")
 country_insights = spark.sql("""
     SELECT
         location_country AS country,
@@ -147,15 +142,12 @@ country_insights = spark.sql("""
     GROUP BY location_country
     ORDER BY total_watch_minutes DESC
 """)
-country_insights.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.country_insights")
+overwrite_external(country_insights, "country_insights")
 
 
 # 7. Ratings vs Popularity
 
-logger.info("Writing ratings_vs_popularity to Hive...")
+logger.info("Processing ratings_vs_popularity...")
 ratings_vs_popularity = spark.sql("""
     SELECT
         m.movie_id,
@@ -168,14 +160,12 @@ ratings_vs_popularity = spark.sql("""
     GROUP BY m.movie_id, m.title, m.imdb_rating
     ORDER BY total_views DESC
 """)
-ratings_vs_popularity.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.ratings_vs_popularity")
+overwrite_external(ratings_vs_popularity, "ratings_vs_popularity")
+
 
 # 8. Completion Rate
 
-logger.info("Writing completion_rate to Hive...")
+logger.info("Processing completion_rate...")
 completion_rate = spark.sql("""
     SELECT
         movie_id,
@@ -183,11 +173,7 @@ completion_rate = spark.sql("""
     FROM watch_history
     GROUP BY movie_id
 """)
-completion_rate.write \
-    .mode("overwrite") \
-    .format("hive") \
-    .saveAsTable("michael.completion_rate")
-
+overwrite_external(completion_rate, "completion_rate")
 
 logger.info("=== GOLD LAYER COMPLETED SUCCESSFULLY ===")
 
