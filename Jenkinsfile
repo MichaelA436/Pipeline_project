@@ -8,7 +8,7 @@ pipeline {
     parameters {
         choice(
             name: 'RUN_MODE',
-            choices: ['FULL', 'INCREMENTAL'],
+            choices: ['FULL', 'INCREMENTAL', 'KAFKA_STREAM'],
             description: 'Choose ETL mode to run on Cloudera'
         )
     }
@@ -74,7 +74,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           Download & Upload JDBC Driver
+           3. Download & Upload JDBC Driver
         --------------------------------------------------------- */
 
         stage('Fetch & Upload JDBC Driver') {
@@ -88,7 +88,7 @@ pipeline {
 
 
         /* ---------------------------------------------------------
-           3. Copy ETL scripts to Cloudera
+           4. Copy ETL scripts to Cloudera
         --------------------------------------------------------- */
         stage('Copy ETL Scripts to Cluster') {
             steps {
@@ -109,7 +109,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           4. FULL LOAD (only when RUN_MODE == FULL)
+           5. FULL LOAD (only when RUN_MODE == FULL)
         --------------------------------------------------------- */
         stage('Full Load') {
             when { expression { params.RUN_MODE == 'FULL' } }
@@ -131,7 +131,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           5. INCREMENTAL LOAD (only when RUN_MODE == INCREMENTAL)
+           6. INCREMENTAL LOAD (only when RUN_MODE == INCREMENTAL)
         --------------------------------------------------------- */
         stage('Incremental Load') {
             when { expression { params.RUN_MODE == 'INCREMENTAL' } }
@@ -153,7 +153,17 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           6. CLEANING (always runs after whichever load was chosen)
+           7. KAFKA STREAM MODE (skip loads)
+        --------------------------------------------------------- */
+        stage('Kafka Stream Mode Notice') {
+            when { expression { params.RUN_MODE == 'KAFKA_STREAM' } }
+            steps {
+                echo "RUN_MODE = KAFKA_STREAM → Skipping FULL and INCREMENTAL loads. Running Cleaning + Transformation only."
+            }
+        }
+
+        /* ---------------------------------------------------------
+           8. CLEANING (always runs after whichever load was chosen)
         --------------------------------------------------------- */
         stage('Cleaning') {
             steps {
@@ -173,7 +183,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           7. TRANSFORMATION (always last)
+           9. TRANSFORMATION (always last)
         --------------------------------------------------------- */
         stage('Transformation') {
             steps {
@@ -203,7 +213,7 @@ pipeline {
 
 
         /* ---------------------------------------------------------
-           8. Check YARN results
+           10. Check YARN results
         --------------------------------------------------------- */
         stage('Check YARN Result') {
             steps {
