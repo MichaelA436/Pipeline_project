@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 spark = (
     SparkSession.builder
     .appName("GoldLayer")
+    .config("spark.sql.warehouse.dir", "/warehouse/tablespace/external/hive")
     .enableHiveSupport()
     .getOrCreate()
 )
