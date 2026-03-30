@@ -1,9 +1,6 @@
 import logging
 from pyspark.sql import SparkSession
 
-
-# Logging Configuration
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -14,9 +11,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-# Spark Session (Hive Enabled but NO saveAsTable)
-
 spark = (
     SparkSession.builder
     .appName("GoldLayer")
@@ -25,19 +19,13 @@ spark = (
     .getOrCreate()
 )
 
-# Base path for all external Hive tables
 BASE = "/warehouse/tablespace/external/hive/michael.db"
+SILVER = "/tmp/michael/project/silver"
 
 def overwrite_external(df, table_name):
-    """Write DataFrame directly to Hive external table location."""
     path = f"{BASE}/{table_name}"
     logger.info(f"Overwriting external table path: {path}")
     df.write.mode("overwrite").parquet(path)
-
-
-# Load Silver Layer
-
-SILVER = "/tmp/michael/project/silver"
 
 logger.info("Loading Silver tables...")
 movies = spark.read.parquet(f"{SILVER}/movies")
@@ -50,9 +38,7 @@ watch.createOrReplaceTempView("watch_history")
 
 logger.info("Running Gold layer transformations...")
 
-
 # 1. User Engagement
-
 logger.info("Processing user_engagement...")
 user_engagement = spark.sql("""
     SELECT
@@ -66,9 +52,7 @@ user_engagement = spark.sql("""
 """)
 overwrite_external(user_engagement, "user_engagement")
 
-
 # 2. Top Movies
-
 logger.info("Processing top_movies...")
 top_movies = spark.sql("""
     SELECT
@@ -83,9 +67,7 @@ top_movies = spark.sql("""
 """)
 overwrite_external(top_movies, "top_movies")
 
-
 # 3. Genre Popularity
-
 logger.info("Processing genre_popularity...")
 genre_popularity = spark.sql("""
     SELECT
@@ -99,9 +81,7 @@ genre_popularity = spark.sql("""
 """)
 overwrite_external(genre_popularity, "genre_popularity")
 
-
 # 4. Daily Active Users
-
 logger.info("Processing daily_active_users...")
 daily_active_users = spark.sql("""
     SELECT
@@ -114,9 +94,7 @@ daily_active_users = spark.sql("""
 """)
 overwrite_external(daily_active_users, "daily_active_users")
 
-
 # 5. Peak Hours
-
 logger.info("Processing peak_hours...")
 peak_hours = spark.sql("""
     SELECT
@@ -129,9 +107,7 @@ peak_hours = spark.sql("""
 """)
 overwrite_external(peak_hours, "peak_hours")
 
-
 # 6. Country Insights
-
 logger.info("Processing country_insights...")
 country_insights = spark.sql("""
     SELECT
@@ -144,9 +120,7 @@ country_insights = spark.sql("""
 """)
 overwrite_external(country_insights, "country_insights")
 
-
 # 7. Ratings vs Popularity
-
 logger.info("Processing ratings_vs_popularity...")
 ratings_vs_popularity = spark.sql("""
     SELECT
@@ -162,9 +136,7 @@ ratings_vs_popularity = spark.sql("""
 """)
 overwrite_external(ratings_vs_popularity, "ratings_vs_popularity")
 
-
 # 8. Completion Rate
-
 logger.info("Processing completion_rate...")
 completion_rate = spark.sql("""
     SELECT
@@ -176,4 +148,5 @@ completion_rate = spark.sql("""
 overwrite_external(completion_rate, "completion_rate")
 
 logger.info("=== GOLD LAYER COMPLETED SUCCESSFULLY ===")
+
 
