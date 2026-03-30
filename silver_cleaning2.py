@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 # -------------------------
 spark = SparkSession.builder.appName("SilverLayer").getOrCreate()
 
-BRONZE = "/tmp/michael/project/bronze"
-SILVER = "/tmp/michael/project/silver"
+BRONZE = "hdfs:///tmp/michael/project/bronze"
+SILVER = "hdfs:///tmp/michael/project/silver"
+
 
 # -------------------------
 # Clean Movies (FULL LOAD)
