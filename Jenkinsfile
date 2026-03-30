@@ -193,6 +193,15 @@ pipeline {
             }
         }
 
+        stage('Invalidate Impala Metadata') {
+            steps {
+                sh '''
+                    impala-shell -i 13.41.167.97:21000 -q "INVALIDATE METADATA;"
+                '''
+            }
+        }
+
+
         /* ---------------------------------------------------------
            8. Check YARN results
         --------------------------------------------------------- */
