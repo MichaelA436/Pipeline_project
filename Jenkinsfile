@@ -196,7 +196,7 @@ pipeline {
         stage('Invalidate Impala Metadata') {
             steps {
                 sh '''
-                    impala-shell -i 13.41.167.97:21000 -q "INVALIDATE METADATA;"
+                    ssh ec2-user@13.41.167.97 "impala-shell -q 'INVALIDATE METADATA;'"
                 '''
             }
         }
