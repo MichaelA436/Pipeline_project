@@ -36,9 +36,9 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           1. Run tests locally (NO Spark here)
+           1. Run Pytest
         --------------------------------------------------------- */
-        stage('Run Tests (Local)') {
+        stage('Pytest') {
             steps {
                 sh '''
                     ${PYTHON_BIN} --version
@@ -163,7 +163,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           8. CLEANING (always runs after whichever load was chosen)
+           8. CLEANING 
         --------------------------------------------------------- */
         stage('Cleaning') {
             steps {
@@ -183,7 +183,7 @@ pipeline {
         }
 
         /* ---------------------------------------------------------
-           9. TRANSFORMATION (always last)
+           9. TRANSFORMATION
         --------------------------------------------------------- */
         stage('Transformation') {
             steps {
