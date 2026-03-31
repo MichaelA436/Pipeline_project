@@ -50,7 +50,7 @@ pipeline {
                         ${PYTHON_BIN} -m pip install -r requirements.txt
                     fi
 
-                    ${PYTHON_BIN} -m pytest tests/ -k "not spark"
+                    ${PYTHON_BIN} -m pytest tests/
                 '''
             }
         }
