@@ -49,7 +49,9 @@ def movies_file():
 
 # Create Empty parquet file
 def watch_history_file():
+    empty_schema = spark.createDataFrame([], "session_id STRING, user_id STRING, movie_id STRING, watch_date DATE, watch_duration_minutes FLOAT, progress_percentage FLOAT, user_rating INT, is_download BOOLEAN, device_type STRING, action STRING, quality STRING, location_country STRING")
     empty_schema.write.mode("overwrite").parquet("/tmp/michael/project/silver/watch_history")
+
 
 # Execute
 
