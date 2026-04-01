@@ -47,6 +47,10 @@ def movies_file():
     df_raw.write.mode("overwrite").parquet("/tmp/michael/project/bronze/movies")
     logger.info("Movies written RAW to Bronze.")
 
+# Create Empty parquet file
+def watch_history_file():
+    empty_schema.write.mode("overwrite").parquet("/tmp/michael/project/silver/watch_history")
+
 # Execute
 
 logger.info("=== FULL LOAD STARTED ===")
