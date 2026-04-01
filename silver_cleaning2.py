@@ -153,11 +153,14 @@ def clean_watch_history():
 
     # --- Incremental filter ---
     if silver_exists:
-        bronze_new = bronze_df.join(
-            silver_existing.select("session_id"),
-            on="session_id",
-            how="left_anti"
-        )
+        # bronze_new = bronze_df.join(
+        #     silver_existing.select("session_id"),
+        #     on="session_id",
+        #     how="left_anti"
+        # )
+
+        bronze_new = bronze_df.dropDuplicates(["session_id"])
+
     else:
         bronze_new = bronze_df
 
