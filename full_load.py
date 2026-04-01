@@ -56,5 +56,6 @@ def watch_history_file():
 logger.info("=== FULL LOAD STARTED ===")
 users_file()
 movies_file()
+watch_history_file()
 logger.info("=== FULL LOAD COMPLETED ===")
 
