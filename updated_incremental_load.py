@@ -30,7 +30,7 @@ properties = {
 
 BRONZE_WATCH = "/tmp/michael/project/bronze/watch_history"
 OFFSET_FILE = "/home/ec2-user/250226batch/michael/watch_history_offset.txt"
-BATCH_SIZE = 1000
+BATCH_SIZE = 10000
 
 
 # Offset Helpers
